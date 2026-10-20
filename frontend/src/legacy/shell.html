@@ -1,0 +1,12 @@
+<div class="shell">
+ <aside class="side" id="side"></aside>
+ <div class="col">
+  <div class="bar0"><div class="crumb" id="crumb"></div><div class="sw" style="position:relative;flex:1;max-width:420px;margin:0 auto"><input class="search" id="gs" placeholder="⌕ Buscar ações e transações" autocomplete="off" oninput="gsSugg(this.value)" onfocus="gsSugg(this.value)"><div class="np hide" id="gsr" style="left:0;right:0;width:auto;top:46px;padding:8px"></div></div><div style="position:relative"><div class="ibtn" id="bell" title="Notificações"></div><div class="np hide" id="np"></div></div><div class="ibtn thm" onclick="theme()" title="Alternar tema">◐</div><div class="av">A</div></div>
+  <main id="main"></main>
+  <main id="rxm" class="hide"></main>
+ </div>
+</div>
+<button class="fab hide" id="fab" aria-label="Nova transação" onclick="goNew()">+</button>
+<div class="more hide" id="more" onclick="if(event.target===this)this.classList.add('hide')"></div>
+<div class="modal" id="modal"><form id="mf"></form></div>
+<div id="toast"></div>

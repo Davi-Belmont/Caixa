@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                String             @id @default(uuid())
+  name              String
+  email             String             @unique
+  password          String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  transactions      Transaction[]
+  bills             Bill[]
+  stocks            Stock[]
+  goals             Goal[]
+  dividends         Dividend[]
+  goalContributions GoalContribution[]
+  categories        Category[]
+  budgets           Budget[]
+  stockOperations   StockOperation[]
+  priceAlerts       PriceAlert[]
+  userConfig        UserConfig?        // <--- Novo: Configurações e receita prevista do usuário
+
+  @@map("users")
+}
+
+model UserConfig {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  expectedIncome Float    @default(0) // Receita prevista para o cálculo da regra 50/30/20
+  ruleNecessity  Int      @default(50) // % para necessidades
+  ruleWants      Int      @default(30) // % para desejos
+  ruleFuture     Int      @default(20) // % para futuro/investimentos (os três somam 100)
+  
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("user_configs")
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  description String
+  value       Float
+  type        String   
+  category    String
+  date        DateTime 
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  bill        Bill?
+  stockOperation StockOperation? // venda de ação que gerou esta receita
+
+  createdAt   DateTime @default(now())
+
+  @@map("transactions")
+}
+
+model Bill {
+  id                 String       @id @default(uuid())
+  title              String
+  amount             Decimal
+  dueDate            DateTime
+  isPaid             Boolean      @default(false)
+  type               String
+  category           String?
+  recurrence         String?
+  installments       Int?
+  currentInstallment Int?
+  barcode            String?
+  paidAt             DateTime?
+  paidAmount         Decimal?
+  
+  transactionId      String?      @unique
+  transaction        Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@map("bills")
+}
+
+model Stock {
+  id           String @id @default(uuid())
+  ticker       String
+  quantity     Int
+  averagePrice Float
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("stocks")
+}
+
+model Goal {
+  id            String    @id @default(uuid())
+  title         String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  icon          String    @default("🎯")
+  deadline      DateTime? 
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now()) 
+  updatedAt     DateTime  @updatedAt      
+ 
+  contributions GoalContribution[]
+
+  @@map("goals")
+}
+
+model Dividend {
+  id        String   @id @default(uuid())
+  ticker    String
+  type      String
+  amount    Decimal
+  date      DateTime
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dividends")
+}
+
+model GoalContribution {
+  id        String   @id @default(uuid())
+  amount    Decimal
+  date      DateTime @default(now())
+  note      String?
+
+  goalId    String
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("goal_contributions")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  icon      String?
+  color     String?
+  type      String   // 'INCOME' ou 'EXPENSE'
+  group     String?  // 'NECESSITY' (Necessidades), 'WANTS' (Desejos), 'FUTURE' (Futuro/Investimentos)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  budgets   Budget[]
+
+  @@map("categories")
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  month       String   // Formato 'YYYY-MM'
+  limitAmount Float    // Limite máximo planeado
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, categoryId, month])
+  @@map("budgets")
+}
+
+model StockOperation {
+  id          String   @id @default(uuid())
+  ticker      String
+  type        String   // 'BUY' ou 'SELL'
+  quantity    Float
+  price       Float    
+  date        DateTime @default(now())
+  realizedPnL Float?   
+
+  // Venda lançada nas transações (receita com o valor total da venda)
+  transactionId String?      @unique
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@map("stock_operations")
+}
+
+model PriceAlert {
+  id        String   @id @default(uuid())
+  ticker    String
+  target    Float    // Preço alvo
+  direction String   // 'ABOVE' ou 'BELOW'
+  hit       Boolean  @default(false) 
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("price_alerts")
+}
